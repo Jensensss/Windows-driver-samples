@@ -92,7 +92,6 @@ protected:
     BOOLEAN m_PendIo;                           // An indication of whether or not we pended I/O for some reason.
     BOOLEAN m_AcquiredResources;                // An indication of whether or not this pin has acquired the necessary hardware resources to operate.
     PKS_VIDEOINFOHEADER m_VideoInfoHeader;
-    PKS_BITMAPINFOHEADER m_pBitmapInfoHeader;   // Optional info for image formats.
 
     //
     // If we are unable to insert all of the mappings in a stream pointer into
@@ -188,6 +187,12 @@ protected:
     virtual
     NTSTATUS 
     Initialize();
+
+    virtual
+    void
+    SetFramingSizes(
+        PKSALLOCATOR_FRAMING_EX Framing
+    );
 
 public:
     //

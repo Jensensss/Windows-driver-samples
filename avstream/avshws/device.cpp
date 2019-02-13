@@ -21,6 +21,164 @@
 **************************************************************************/
 
 #include "avshws.h"
+
+PVOID operator new
+(
+    size_t          iSize,
+    _When_((poolType & NonPagedPoolMustSucceed) != 0,
+       __drv_reportError("Must succeed pool allocations are forbidden. "
+             "Allocation failures cause a system crash"))
+    POOL_TYPE       poolType
+)
+{
+    PVOID result = ExAllocatePoolWithTag(poolType,iSize,'wNCK');
+
+    if (result) {
+        RtlZeroMemory(result,iSize);
+    }
+
+    return result;
+}
+
+PVOID operator new
+(
+    size_t          iSize,
+    _When_((poolType & NonPagedPoolMustSucceed) != 0,
+       __drv_reportError("Must succeed pool allocations are forbidden. "
+             "Allocation failures cause a system crash"))
+    POOL_TYPE       poolType,
+    ULONG           tag
+)
+{
+    PVOID result = ExAllocatePoolWithTag(poolType,iSize,tag);
+
+    if (result) {
+        RtlZeroMemory(result,iSize);
+    }
+
+    return result;
+}
+
+PVOID 
+operator new[](
+    size_t          iSize,
+    _When_((poolType & NonPagedPoolMustSucceed) != 0,
+        __drv_reportError("Must succeed pool allocations are forbidden. "
+            "Allocation failures cause a system crash"))
+    POOL_TYPE       poolType,
+    ULONG           tag
+)
+{
+    PVOID result = ExAllocatePoolWithTag(poolType, iSize, tag);
+
+    if (result)
+    {
+        RtlZeroMemory(result, iSize);
+    }
+
+    return result;
+}
+
+/*++
+
+Routine Description:
+
+    Array delete() operator.
+
+Arguments:
+
+    pVoid -
+        The memory to free.
+
+Return Value:
+
+    None
+
+--*/
+void 
+__cdecl 
+operator delete[](
+    PVOID pVoid
+)
+{
+    if (pVoid)
+    {
+        ExFreePool(pVoid);
+    }
+}
+
+/*++
+
+Routine Description:
+
+    Sized delete() operator.
+
+Arguments:
+
+    pVoid -
+        The memory to free.
+
+    size -
+        The size of the memory to free.
+
+Return Value:
+
+    None
+
+--*/
+void __cdecl operator delete
+(
+    void *pVoid,
+    size_t /*size*/
+)
+{
+    if (pVoid)
+    {
+        ExFreePool(pVoid);
+    }
+}
+
+/*++
+
+Routine Description:
+
+    Sized delete[]() operator.
+
+Arguments:
+
+    pVoid -
+        The memory to free.
+
+    size -
+        The size of the memory to free.
+
+Return Value:
+
+    None
+
+--*/
+void __cdecl operator delete[]
+(
+    void *pVoid,
+    size_t /*size*/
+)
+{
+    if (pVoid)
+    {
+        ExFreePool(pVoid);
+    }
+}
+
+void __cdecl operator delete
+(
+    PVOID pVoid
+    )
+{
+    if (pVoid) {
+        ExFreePool(pVoid);
+    }
+}
+
 /**************************************************************************
 
     PAGEABLE CODE
@@ -161,7 +319,7 @@ Return Value:
     //
     // By PnP, it's possible to receive multiple starts without an intervening
     // stop (to reevaluate resources, for example).  Thus, we only perform
-    // creations of the simulation on the initial start and ignore any
+    // creations of the simulation on the initial start and ignore any 
     // subsequent start.  Hardware drivers with resources should evaluate
     // resources and make changes on 2nd start.
     //
@@ -173,7 +331,7 @@ Return Value:
             // If we couldn't create the hardware simulation, fail.
             //
             Status = STATUS_INSUFFICIENT_RESOURCES;
-
+    
         } else {
             Status = KsAddItemToObjectBag (
                 m_Device -> Bag,
@@ -185,90 +343,8 @@ Return Value:
                 delete m_HardwareSimulation;
             }
         }
-#if defined(_X86_)
-        //
-        // DMA operations illustrated in this sample are applicable only for 32bit platform.
-        //
-        INTERFACE_TYPE InterfaceBuffer;
-        ULONG InterfaceLength;
-        DEVICE_DESCRIPTION DeviceDescription;
-
-        if (NT_SUCCESS (Status)) {
-            //
-            // Set up DMA...
-            //
-            // Ordinarilly, we'd be using InterfaceBuffer or
-            // InterfaceTypeUndefined if !NT_SUCCESS (IfStatus) as the
-            // InterfaceType below; however, for the purposes of this sample,
-            // we lie and say we're on the PCI Bus.  Otherwise, we're using map
-            // registers on x86 32 bit physical to 32 bit logical and this isn't
-            // what I want to show in this sample.
-            //
-            //
-            // NTSTATUS IfStatus =
-
-            IoGetDeviceProperty (
-                m_Device -> PhysicalDeviceObject,
-                DevicePropertyLegacyBusType,
-                sizeof (INTERFACE_TYPE),
-                &InterfaceBuffer,
-                &InterfaceLength
-                );
-
-            //
-            // Initialize our fake device description.  We claim to be a
-            // bus-mastering 32-bit scatter/gather capable piece of hardware.
-            //
-            DeviceDescription.Version = DEVICE_DESCRIPTION_VERSION;
-            DeviceDescription.DmaChannel = ((ULONG) ~0);
-            DeviceDescription.InterfaceType = PCIBus;
-            DeviceDescription.DmaWidth = Width32Bits;
-            DeviceDescription.DmaSpeed = Compatible;
-            DeviceDescription.ScatterGather = TRUE;
-            DeviceDescription.Master = TRUE;
-            DeviceDescription.Dma32BitAddresses = TRUE;
-            DeviceDescription.AutoInitialize = FALSE;
-            DeviceDescription.MaximumLength = (ULONG) -1;
-
-            //
-            // Get a DMA adapter object from the system.
-            //
-            m_DmaAdapterObject = IoGetDmaAdapter (
-                m_Device -> PhysicalDeviceObject,
-                &DeviceDescription,
-                &m_NumberOfMapRegisters
-                );
-
-            if (!m_DmaAdapterObject) {
-                Status = STATUS_UNSUCCESSFUL;
-            }
-
-        }
-
-        if (NT_SUCCESS (Status)) {
-            //
-            // Initialize our DMA adapter object with AVStream.  This is
-            // **ONLY** necessary **IF** you are doing DMA directly into
-            // capture buffers as this sample does.  For this,
-            // KSPIN_FLAG_GENERATE_MAPPINGS must be specified on a queue.
-            //
-
-            //
-            // The (1 << 20) below is the maximum size of a single s/g mapping
-            // that this hardware can handle.  Note that I have pulled this
-            // number out of thin air for the "fake" hardware.
-            //
-            KsDeviceRegisterAdapterObject (
-                m_Device,
-                m_DmaAdapterObject,
-                (1 << 20),
-                sizeof (KSMAPPING)
-                );
-
-        }
-#endif
     }
-
+    
     return Status;
 
 }
@@ -306,7 +382,7 @@ Return Value:
         //
         // Return the DMA adapter back to the system.
         //
-        m_DmaAdapterObject -> DmaOperations ->
+        m_DmaAdapterObject -> DmaOperations -> 
             PutDmaAdapter (m_DmaAdapterObject);
 
         m_DmaAdapterObject = NULL;
@@ -328,7 +404,7 @@ AcquireHardwareResources (
 
 Routine Description:
 
-    Acquire hardware resources for the capture hardware.  If the
+    Acquire hardware resources for the capture hardware.  If the 
     resources are already acquired, this will return an error.
     The hardware configuration must be passed as a VideoInfoHeader.
 
@@ -376,44 +452,44 @@ Return Value:
             delete m_ImageSynth;
             m_ImageSynth = NULL;
         }
-
+    
         //
         // Create the necessary type of image synthesizer.
         //
         if (m_VideoInfoHeader -> bmiHeader.biBitCount == 24 &&
             m_VideoInfoHeader -> bmiHeader.biCompression == KS_BI_RGB) {
-
+    
             //
             // If we're RGB24, create a new RGB24 synth.  RGB24 surfaces
             // can be in either orientation.  The origin is lower left if
             // height < 0.  Otherwise, it's upper left.
             //
-            m_ImageSynth = new (NonPagedPoolNx, 'RysI')
+            m_ImageSynth = new (NonPagedPoolNx, 'RysI') 
                 CRGB24Synthesizer (
                     m_VideoInfoHeader -> bmiHeader.biHeight >= 0
                     );
-
+    
         } else
         if (m_VideoInfoHeader -> bmiHeader.biBitCount == 16 &&
            (m_VideoInfoHeader -> bmiHeader.biCompression == FOURCC_YUY2)) {
-
+    
             //
             // If we're UYVY, create the YUV synth.
             //
             m_ImageSynth = new(NonPagedPoolNx, 'YysI') CYUVSynthesizer;
-
+    
         }
         else
             //
             // We don't synthesize anything but RGB 24 and UYVY.
             //
             Status = STATUS_INVALID_PARAMETER;
-
+    
         if (NT_SUCCESS (Status) && !m_ImageSynth) {
-
+    
             Status = STATUS_INSUFFICIENT_RESOURCES;
-
-        }
+    
+        } 
 
         if (NT_SUCCESS (Status)) {
             //
@@ -428,7 +504,7 @@ Return Value:
             //
             ReleaseHardwareResources ();
         }
-
+    
     } else {
 
         //
@@ -660,9 +736,9 @@ Return Value:
 
     PAGED_CODE();
 
+    
 
-
-    return
+    return 
         m_HardwareSimulation -> ProgramScatterGatherMappings (
             Clone,
             Buffer,
@@ -749,7 +825,7 @@ Return Value:
     // of hardware registers (ReadNumberOfMappingsCompleted) which would likely
     // be done in the ISR.
     //
-    ULONG NumMappingsCompleted =
+    ULONG NumMappingsCompleted = 
         m_HardwareSimulation -> ReadNumberOfMappingsCompleted ();
 
     //
@@ -774,7 +850,7 @@ Return Value:
 // CaptureFilterDescriptor:
 //
 // The filter descriptor for the capture device.
-DEFINE_KSFILTER_DESCRIPTOR_TABLE (FilterDescriptors) {
+DEFINE_KSFILTER_DESCRIPTOR_TABLE (FilterDescriptors) { 
     &CaptureFilterDescriptor
 };
 
@@ -810,8 +886,8 @@ CaptureDeviceDispatch = {
 // This is the device descriptor for the capture device.  It points to the
 // dispatch table and contains a list of filter descriptors that describe
 // filter-types that this device supports.  Note that the filter-descriptors
-// can be created dynamically and the factories created via
-// KsCreateFilterFactory as well.
+// can be created dynamically and the factories created via 
+// KsCreateFilterFactory as well.  
 //
 const
 KSDEVICE_DESCRIPTOR
@@ -865,126 +941,11 @@ Return Value:
     // at add & start.  Everything is done based on the descriptors passed
     // here.
     //
-    return
+    return 
         KsInitializeDriver (
             DriverObject,
             RegistryPath,
             &CaptureDeviceDescriptor
             );
 
-}
-
-/*************************************************
-
-    Global Functions
-
-*************************************************/
-
-/*++
-
-Routine Description:
-
-    Array delete() operator.
-
-Arguments:
-
-    pVoid -
-        The memory to free.
-
-Return Value:
-
-    None
-
---*/
-void
-__cdecl
-operator delete[](
-    PVOID pVoid
-)
-{
-    if (pVoid)
-    {
-        ExFreePool(pVoid);
-    }
-}
-
-/*++
-
-Routine Description:
-
-    Sized delete() operator.
-
-Arguments:
-
-    pVoid -
-        The memory to free.
-
-    size -
-        The size of the memory to free.
-
-Return Value:
-
-    None
-
---*/
-void __cdecl operator delete
-(
-    void *pVoid,
-    size_t /*size*/
-)
-{
-    if (pVoid)
-    {
-        ExFreePool(pVoid);
-    }
-}
-
-/*++
-
-Routine Description:
-
-    Sized delete[]() operator.
-
-Arguments:
-
-    pVoid -
-        The memory to free.
-
-    size -
-        The size of the memory to free.
-
-Return Value:
-
-    None
-
---*/
-void __cdecl operator delete[]
-(
-    void *pVoid,
-    size_t /*size*/
-)
-{
-    if (pVoid)
-    {
-        ExFreePool(pVoid);
-    }
-}
-
-PVOID operator new
-(
-    size_t          iSize,
-    _When_((poolType & NonPagedPoolMustSucceed) != 0,
-       __drv_reportError("Must succeed pool allocations are forbidden. "
-             "Allocation failures cause a system crash"))
-    POOL_TYPE       poolType,
-    ULONG           tag
-)
-{
-    PVOID result = ExAllocatePoolWithTag(poolType,iSize,tag);
-
-    if (result) {
-        RtlZeroMemory(result,iSize);
-    }
-
-    return result;
 }

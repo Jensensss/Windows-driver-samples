@@ -132,7 +132,6 @@ protected:
     LONGLONG    m_Attrib[MAX_Attribute];
 
     //  This value is used to fudge a rotated image.
-    enum
     AcpiPldRotation
                 m_Rotation;
 
@@ -161,7 +160,7 @@ protected:
 
     //
     //  The assumed stride of our output format.  Currently used by YUY2 and
-    //  all image captures, except NV12.  This value should be initialized by
+    //  all image captures.  This value should be initialized by
     //  the derived classes.
     //
     LONG    m_OutputStride;
@@ -178,7 +177,7 @@ protected:
     //
     //  A printable name identifying this format.
     //
-    PCCHAR  m_FormatName;
+    const CHAR *m_FormatName;
 
     //
     //  A color palette for this colorspace.
@@ -213,7 +212,7 @@ public:
     // DEFAULT CONSTRUCTOR
     //
     CSynthesizer(
-        PCCHAR Name="[Unknown]",
+        const CHAR *Name="[Unknown]",
         ULONG ChannelMask=0,
         ULONG Width=0,
         ULONG Height=0
@@ -471,7 +470,7 @@ public:
     //  Get the color channel mask associated with this format.
     //
     ULONG
-    GetChannelMask()
+    GetChannelMask() const
     {
         return m_ChannelMask;
     }

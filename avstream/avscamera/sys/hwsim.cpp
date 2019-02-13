@@ -792,6 +792,35 @@ EmitMetadata(
     }
 }
 
+bool
+CHardwareSimulation::
+CheckForAvailableBuffer()
+{
+    return true;
+}
+
+NTSTATUS
+CHardwareSimulation::
+CommitImageData(PSCATTER_GATHER_ENTRY sGEntry, ULONG stride)
+{
+    //  Have the synthesizer output a frame to the buffer.
+    ULONG CommitBufferSize = sGEntry->ByteCount;
+    PUCHAR CommitBufferAddress = sGEntry->Virtual;
+
+    ULONG BytesCopied = m_Synthesizer->DoCommit(CommitBufferAddress, CommitBufferSize, stride);
+    NT_ASSERT(BytesCopied);
+    DBG_TRACE("BytesCopied = %d", BytesCopied);
+
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS
+CHardwareSimulation::
+ValidateBuffer(PSCATTER_GATHER_ENTRY sGEntry)
+{
+    return STATUS_SUCCESS;
+}
+
 void
 CHardwareSimulation::
 EmitFaceMetadata(
@@ -1004,18 +1033,17 @@ Return Value:
               m_PinID, m_ImageSize, m_ScatterGatherMappingsQueued, m_ScatterGatherBytesQueued);
 
     NTSTATUS    ntStatus = STATUS_SUCCESS;
-
     ULONG BufferRemaining = m_ImageSize;
 
     //
-    //  If there isn't a frame buffer queued, we justskip the frame and consider 
+    //  If there isn't a frame buffer queued, we just skip the frame and consider 
     //  it starvation.
     //
     while (BufferRemaining &&
             !IsListEmpty(&m_ScatterGatherMappings) &&
-            m_ScatterGatherBytesQueued >= BufferRemaining)
+            (!CheckForAvailableBuffer() || m_ScatterGatherBytesQueued >= BufferRemaining))
     {
-        LIST_ENTRY *listEntry = RemoveHeadList (&m_ScatterGatherMappings);
+        LIST_ENTRY *listEntry = RemoveHeadList(&m_ScatterGatherMappings);
         m_ScatterGatherMappingsQueued--;
 
         PSCATTER_GATHER_ENTRY SGEntry =
@@ -1050,10 +1078,13 @@ Return Value:
             Stride = (ULONG) ABS(FrameInfo->lSurfacePitch);
         }
 
-        //  Have the synthesizer output a frame to the buffer.
-        ULONG   BytesCopied = m_Synthesizer->DoCommit( SGEntry->Virtual, SGEntry->ByteCount, Stride );
-        NT_ASSERT( BytesCopied );
-        DBG_TRACE( "BytesCopied = %d", BytesCopied );
+        ntStatus = ValidateBuffer(SGEntry);
+        if (!NT_SUCCESS(ntStatus))
+        {
+            break;
+        }
+
+        ntStatus = CommitImageData(SGEntry, Stride);
 
         //Adding time stamp
         if(m_PhotoConfirmationEntry.isRequired())
@@ -1091,9 +1122,9 @@ Return Value:
     }
 
     //  Report an error if we used the last buffer.
-    if (BufferRemaining)
+    if (NT_SUCCESS(ntStatus) && BufferRemaining)
     {
-        //DBG_TRACE("BufferRemaining=%u", BufferRemaining);
+        DBG_TRACE("BufferRemaining=%u", BufferRemaining);
         ntStatus = STATUS_INSUFFICIENT_RESOURCES;
     }
 
@@ -1107,7 +1138,7 @@ Return Value:
 
 **************************************************************************/
 
-PCCHAR
+const CHAR *
 DVS_Text( ULONGLONG Flags )
 {
     PAGED_CODE();
@@ -1123,12 +1154,12 @@ DVS_Text( ULONGLONG Flags )
             CHAR buffer[32];
 
             RtlStringCbPrintfA(buffer, sizeof(buffer), "Unknown [0x%016llX]", Flags);
-            return (PCCHAR) buffer;
+            return (const CHAR *) buffer;
         }
     }
 }
 
-PCCHAR
+const CHAR *
 OIS_Text( ULONGLONG Flags )
 {
     PAGED_CODE();
@@ -1144,7 +1175,7 @@ OIS_Text( ULONGLONG Flags )
             CHAR buffer[32];
 
             RtlStringCbPrintfA(buffer, sizeof(buffer), "Unknown [0x%016llX]", Flags);
-            return (PCCHAR) buffer;
+            return (const CHAR *) buffer;
         }
     }
 }
@@ -1195,16 +1226,16 @@ Return Value:
         // Generate a "time stamp" just to overlay it onto the capture image.
         // It makes it more exciting than bars that do nothing.
         //
-        //  Only set these values if it's a preview simulation.
-        //  Note: This was simpler than overloading CHardwareSimulation...
-        if( m_Sensor->IsPreviewIndex(m_PinID) )
+        //  Note: Streaming pins have their own indexes; but still pins track
+        //        the most recent streaming pin's index.
+        if (!m_Sensor->IsStillIndex(m_PinID))
         {
             DBG_TRACE("QPC=0x%016llX", Qpc);
 
             //  Broadcast the preview pin's info to all pin simulations.
-            m_Sensor->SetSynthesizerAttribute(CSynthesizer::FrameNumber, m_InterruptTime);
-            m_Sensor->SetSynthesizerAttribute(CSynthesizer::RelativePts, (m_InterruptTime + 1) * m_TimePerFrame );
-            m_Sensor->SetSynthesizerAttribute(CSynthesizer::QpcTime, Qpc );
+            m_Sensor->SetSynthesizerAttribute(CSynthesizer::FrameNumber, m_InterruptTime, m_PinID);
+            m_Sensor->SetSynthesizerAttribute(CSynthesizer::RelativePts, (m_InterruptTime + 1) * m_TimePerFrame, m_PinID);
+            m_Sensor->SetSynthesizerAttribute(CSynthesizer::QpcTime, Qpc, m_PinID);
         }
 
         m_Synthesizer->DoSynthesize();

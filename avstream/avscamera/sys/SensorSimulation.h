@@ -59,7 +59,8 @@ protected:
     ULONGLONG m_VideoHDR;
     ULONGLONG m_VideoStabilization;
     ULONGLONG m_Histogram;
-    ULONGLONG   m_OpticalImageStabilization;
+    ULONGLONG m_OpticalImageStabilization;
+    ULONGLONG m_VideoTemporalDenoising;
     CExtendedProperty   m_AdvancedPhoto;
 
     CWhiteBalanceRoiIspControl  m_RoiWhiteBalance;
@@ -136,6 +137,14 @@ protected:
     virtual
     NTSTATUS
     ProgramDefaults();
+
+    virtual
+    NTSTATUS
+    CreateHardwareSimulation(
+        _In_ LONG pinID,
+        _In_ const KSPIN_DESCRIPTOR_EX *pinDescriptors,
+        _Out_ CHardwareSimulation** pSim
+    );
 
 public:
     //
@@ -226,6 +235,7 @@ public:
     DECLARE_PROPERTY( CExtendedMaxVideoFpsForPhotoRes, MaxVideoFpsForPhotoRes );
     DECLARE_PROPERTY_GET( CExtendedFieldOfView, FieldOfView );
     DECLARE_PROPERTY_GET( CExtendedCameraAngleOffset, CameraAngleOffset );
+    DECLARE_PROPERTY( CExtendedProperty, VideoTemporalDenoising);
 
     DECLARE_PROPERTY_VARSIZE_ASYNC_NOCANCEL( CRoiProperty, Roi );
 

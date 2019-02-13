@@ -446,6 +446,7 @@ public:
     // stop issuing.  When this call returns, the "fake" hardware has
     // stopped accessing all s/g buffers, etc...
     //
+    virtual
     NTSTATUS
     Stop (
         _In_    PKSPIN
@@ -517,7 +518,7 @@ public:
     }
 
     void
-    SetSynthesizerAttribute( CSynthesizer::Attribute Attrib, LONGLONG Info );
+    SetSynthesizerAttribute( CSynthesizer::Attribute Attrib, LONGLONG Info, LONG PinId );
 
 protected:
     LONG
@@ -574,6 +575,7 @@ public:
     DECLARE_PROPERTY( CExtendedProperty, OptimizationHint );
     DECLARE_PROPERTY( CExtendedProperty, AdvancedPhoto );
     DECLARE_PROPERTY( CExtendedVidProcSetting, FaceDetection );
+    DECLARE_PROPERTY( CExtendedProperty, VideoTemporalDenoising);
 
     DECLARE_PROPERTY_VARSIZE_ASYNC( CRoiProperty, Roi );
 

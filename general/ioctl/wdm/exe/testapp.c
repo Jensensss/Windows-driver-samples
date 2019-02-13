@@ -69,7 +69,7 @@ main(
 
         if (errNum != ERROR_FILE_NOT_FOUND) {
 
-            printf("CreateFile failed!  ERROR_FILE_NOT_FOUND = %d\n", errNum);
+            printf("CreateFile failed : %d\n", errNum);
 
             return ;
         }
@@ -89,7 +89,7 @@ main(
                           DRIVER_FUNC_INSTALL
                           )) {
 
-            printf("Unable to install driver. \n");
+            printf("Unable to install driver.\n");
 
             //
             // Error - remove driver.
@@ -156,7 +156,7 @@ main(
     printf("    OutBuffer (%d): %s\n", bytesReturned, OutputBuffer);
 
     //
-    // Performing METHOD_NIETHER
+    // Performing METHOD_NEITHER
     //
 
     printf("\nCalling DeviceIoControl METHOD_NEITHER\n");
@@ -207,7 +207,7 @@ main(
 
     if ( !bRc )
     {
-        printf ( "Error in DeviceIoControl : : %d", GetLastError());
+        printf ( "Error in DeviceIoControl : %d", GetLastError());
         return;
     }
 
@@ -234,7 +234,7 @@ main(
 
     if ( !bRc )
     {
-        printf ( "Error in DeviceIoControl : : %d", GetLastError());
+        printf ( "Error in DeviceIoControl : %d", GetLastError());
         return;
     }
 

@@ -17,32 +17,36 @@ Windows includes a print architecture and a document format known as XPS (XML Pa
 
 This sample is intended to provide a starting point for developing XPSDrv printer drivers and to illustrate the facility and potential of an XPSDrv print driver. This goal is accomplished by implementing a number of real-world features within a set of XPS print pipeline filters that are configured through a configuration plug-in that supports custom UI content and PrintTicket handling.
 
-The sample broadly consists of three components: a set of filters, a configuration plug-in for handling custom UI content, and a configuration plug-in for handling more advanced PrintTicket features. For more information, see [XPS Printing Features](http://msdn.microsoft.com/en-us/library/windows/hardware/ff564299(v=vs.85).aspx).
+The sample broadly consists of three components: a set of filters, a configuration plug-in for handling custom UI content, and a configuration plug-in for handling more advanced PrintTicket features. For more information, see [XPS Printing Features](https://docs.microsoft.com/en-us/windows-hardware/drivers/print/xps-printing-features).
 
 
 Build the sample
 ----------------
 
-To build a driver solution using Windows Driver Kit (WDK) 10 and Visual Studio 2015, perform the following steps.
+To build a driver solution using Windows Driver Kit (WDK) 10 and Visual Studio 2017, perform the following steps.
 
-1. Open the solution file in Visual Studio 2015.
+1. Open the solution file in Visual Studio 2017.
 2. Add all non-binary files (usually located in the \\install directory of the sample) to the Package project:
-  a. In the **Solution Explorer**, right click **Driver Files**
-  b. Select **Add**, then click **Existing Item**
-  c. Navigate to the location to which you downloaded the sample, and select all the files in the install directory, or the equivalent set of non-binary files such as INFs, INIs, GPD, PPD files, etc.
-  d. Click **Add**
+   1. In the **Solution Explorer**, expand the **package** project and right click **Driver Files**
+   2. Select **Add**, then click **Existing Item**
+   3. Navigate to the location to which you downloaded the sample, and select all the files in the **install** directory, or the equivalent set of non-binary files such as INFs, INIs, GPD, PPD files, etc.
+   4. Click **Add**
 3. Configure these files to be added into the driver package:
-  a. In the **Solution Explorer**, right click on the solution and choose **Add** > **New Project**. Choose **Driver Install Package** under Visual C++/Windows Driver/Package.
-  b. In the **Solution Explorer**, right click the Package project and select **Properties**.
-  c. In the left pane, click **Configuration Properties** \> **Driver Install** \> **Package Files**.
-  d. In the right pane, use the ellipsis button (...) to browse to the set of files that needs to be added to the driver package. All the data files that you added in **Step 2-c**, except the INF file, should be added. This configuration is per-architecture, so this configuration must be repeated for each architecture that will be built.
-  e. Click **OK**.
-4. Open the INF file and edit it to match the built output.
-  a. Open the INF file.
-  b. In the Version section, add a reference to a catalog file like this: CatalogFile=XpsDrvSmpl.cat.
-  c. In the SourceDisksFiles section, change the location of the DLL files you are building, to =1. This indicates that there is no architecture specific directory in this driver. If you ship multiple architectures simultaneously, you will need to collate the driver INF manually.
+   1. In the **Solution Explorer**, right click on the solution and choose **Add** > **New Project**. Choose **Driver Install Package** under Visual C++/Windows Driver/Package.
+   2. In the **Solution Explorer**, right click the **Driver Package** project and select **Properties**.
+   3. In the left pane, click **Configuration Properties** \> **Driver Install** \> **Package Files**. (If **Package Files** is not available, you may need to re-install the **Windows Driver Kit**.)
+   4. In the right pane, click **<Edit...>** and use the ellipsis button (...) to browse to the set of files that needs to be added to the driver package. All of the data files added in **Step 2.iii**, except the INF file, should be added. This configuration is per architecture, so this configuration must be repeated for each architecture that will be built.
+   5. Click **OK**.
+4. Add a reference to the driver package.
+   1. In the **Solution Explorer**, right click the **package** project and select **Add Reference**.
+   2. In the right pane, check the **Driver Package** created in step 3.
+   3. Click **OK**.
+5. Open the INF file and edit it to match the built output.
+   1. Open the INF file.
+   2. In the Version section, add a reference to a catalog file like this: CatalogFile=XpsDrvSmpl.cat.
+   3. In the SourceDisksFiles section, change the location of the DLL files you are building to =1. This indicates that there is no architecture specific directory in this driver. If you ship multiple architectures simultaneously, you will need to collate the driver INF manually.
 
-At this point, Visual Studio 2015 will be able to build a driver package and output the files to disk. In order to configure driver signing and deployment, see [Developing, Testing, and Deploying Drivers](http://msdn.microsoft.com/en-us/library/windows/hardware/ff554651(v=vs.85).aspx).
+At this point, Visual Studio 2017 will be able to build a driver package and output the files to disk. In order to configure driver signing and deployment, see [Developing, Testing, and Deploying Drivers](https://docs.microsoft.com/en-us/windows-hardware/drivers/develop/).
 
 **Note** If you compile your sample driver with Microsoft Visual Studio version 10, or 11 with the \_DEBUG flag set, then you should not use CComVariant on the following two XPS Print Filter Pipeline properties:
 
@@ -86,7 +90,7 @@ Two interfaces are defined in *ipkarch.h* and *ipkfile.h* that need support from
 
 -   Simplify the scaling filter to use the XPS interfaces (like the other four filters)
 -   License the third-party zip library that is used in the sample
--   Modify the sample to use another ZIP library. For example, you can modify the sample to use the [Packaging API Reference](http://msdn.microsoft.com/en-us/library/windows/desktop/dd371643(v=vs.85).aspx)
+-   Modify the sample to use another ZIP library. For example, you can modify the sample to use the [Packaging API Reference](https://docs.microsoft.com/en-us/previous-versions/windows/desktop/opc/packaging-programming-reference)
 
 IPKArch defines an interface for initializing, controlling, and accessing the PK archive. IPKFile defines an interface that abstracts the details of a PK archive file header record from the XPS container handling. Access to the files within the archive is provided through a map between the file name and file objects that support the IPKFile interface. This allows the XPS processing code to retrieve file data by name (a convenience as the interaction between parts and relationships between parts is defined using the part name).
 
